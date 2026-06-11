@@ -1,19 +1,11 @@
-import Calendar from "@/components/calendar/Calendar";
-import PageBreadcrumb from "@/components/common/PageBreadCrumb";
-import { Metadata } from "next";
-import React from "react";
+import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Next.js Calender | Gym-fitness - Next.js Dashboard Template",
-  description:
-    "This is Next.js Calender page for Gym-fitness  Tailwind CSS Admin Dashboard Template",
-  // other metadata
+  title: "Programs Management | Gym Fitness Admin",
+  description: "Redirects to the Programs management page.",
 };
-export default function page() {
-  return (
-    <div>
-      <PageBreadcrumb pageTitle="Calendar" />
-      <Calendar />
-    </div>
-  );
+
+export default function CalendarPage() {
+  redirect("/programs");
 }

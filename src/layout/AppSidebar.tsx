@@ -43,12 +43,12 @@ const navItems: NavItem[] = [
   {
     icon: <Dumbbell size={20} />,
     name: "Programs",
-    path: "/calendar",
+    path: "/programs",
   },
   {
     name: "Membership-Plan",
     icon: <CreditCard size={20} />,
-    path: "/form-elements",
+    path: "/membership-plan",
   },
   {
     name: "Recipes",
