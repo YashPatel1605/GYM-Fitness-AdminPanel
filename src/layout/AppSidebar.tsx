@@ -53,7 +53,7 @@ const navItems: NavItem[] = [
   {
     name: "Recipes",
     icon: <UtensilsCrossed size={20} />,
-    path: "/basic-tables",
+    path: "/recipes",
   },
   {
     name: "Services",

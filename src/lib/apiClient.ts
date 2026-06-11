@@ -22,6 +22,15 @@ const buildUrl = (endpoint: string) => {
   return `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 };
 
+const formatTextError = (value: string) => {
+  const text = value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return text || "Something went wrong. Please try again.";
+};
+
 async function fetchApi<T>(
   endpoint: string,
   options: ApiClientOptions = {}
@@ -57,7 +66,7 @@ async function fetchApi<T>(
       typeof data === "object" && data && "message" in data
         ? String(data.message)
         : typeof data === "string" && data
-          ? data
+          ? formatTextError(data)
           : "Something went wrong. Please try again.";
 
     throw new Error(message);

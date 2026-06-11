@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle,
-  Dumbbell,
   Edit3,
   Plus,
   Save,
@@ -12,6 +11,8 @@ import {
   XCircle,
 } from "lucide-react";
 import Badge from "@/components/ui/badge/Badge";
+import ImageUpload from "@/components/common/ImageUpload";
+import ImageViewer from "@/components/common/ImageViewer";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Modal } from "@/components/ui/modal";
 import apiClient from "@/lib/apiClient";
@@ -44,7 +45,7 @@ type Program = {
 type ProgramResponse = {
   success?: boolean;
   count?: number;
-  data: Program[] | Program;
+  data?: Program[] | Program;
   meta?: {
     total?: number;
     page?: number;
@@ -121,6 +122,22 @@ const toNumber = (value: string, fallback = 0) => {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 };
 
+const isProgram = (value: unknown): value is Program =>
+  Boolean(
+    value &&
+      typeof value === "object" &&
+      "_id" in value &&
+      "title" in value
+  );
+
+const normalizePrograms = (data: ProgramResponse["data"]) => {
+  if (Array.isArray(data)) {
+    return data.filter(isProgram);
+  }
+
+  return isProgram(data) ? [data] : [];
+};
+
 export default function ProgramManager() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [formState, setFormState] = useState<FormState>(initialFormState);
@@ -128,6 +145,7 @@ export default function ProgramManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -137,7 +155,7 @@ export default function ProgramManager() {
 
     try {
       const result = await apiClient.get<ProgramResponse>("/programs");
-      setPrograms(Array.isArray(result.data) ? result.data : []);
+      setPrograms(normalizePrograms(result.data));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to fetch Programs data."
@@ -197,6 +215,13 @@ export default function ProgramManager() {
     }));
   };
 
+  const handleImageChange = (image: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      image,
+    }));
+  };
+
   const handleExerciseChange = (
     index: number,
     field: keyof Exercise,
@@ -234,6 +259,15 @@ export default function ProgramManager() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isImageUploading) {
+      const errorMessage = "Please wait until the image upload finishes.";
+
+      setError(errorMessage);
+      showToast("error", errorMessage);
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -269,27 +303,16 @@ export default function ProgramManager() {
             payload
           )
         : await apiClient.post<ProgramResponse>("/programs", payload);
-      const savedProgram = Array.isArray(result.data)
-        ? result.data[0]
-        : result.data;
-
-      setPrograms((current) => {
-        if (selectedProgram) {
-          return current.map((program) =>
-            program._id === savedProgram._id ? savedProgram : program
-          );
-        }
-
-        return [savedProgram, ...current];
-      });
+      const savedProgram = normalizePrograms(result.data)[0];
       showToast(
         "success",
         result.message ||
-          `Program "${savedProgram.title}" ${
+          `Program "${savedProgram?.title || formState.title}" ${
             isEditing ? "updated" : "added"
           } successfully.`
       );
       closeModal();
+      await loadPrograms();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to save Program.";
@@ -371,7 +394,7 @@ export default function ProgramManager() {
   const actionLabel = selectedProgram ? "Update Program" : "Add Program";
   const sortedPrograms = useMemo(
     () =>
-      [...programs].sort(
+      programs.filter(isProgram).sort(
         (a, b) =>
           new Date(b.updatedAt || b.createdAt).getTime() -
           new Date(a.updatedAt || a.createdAt).getTime()
@@ -488,17 +511,19 @@ export default function ProgramManager() {
                   </tr>
                 ) : (
                   sortedPrograms.map((program) => (
-                    <tr key={program._id}>
-                      <td className="px-5 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-300">
-                            <Dumbbell className="h-5 w-5" />
-                          </div>
+                    <tr key={program._id} className="align-top">
+                      <td className="px-5 py-5">
+                        <div className="flex min-w-[520px] items-start gap-4">
+                          <ImageViewer
+                            src={program.image}
+                            alt={program.title}
+                            className="h-24 w-24"
+                          />
                           <div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                            <p className="text-base font-semibold text-gray-800 dark:text-white/90">
                               {program.title}
                             </p>
-                            <p className="mt-1 max-w-[360px] truncate text-sm text-gray-500 dark:text-gray-400">
+                            <p className="mt-2 max-w-[420px] text-sm leading-6 text-gray-500 dark:text-gray-400">
                               {program.shortDescription}
                             </p>
                           </div>
@@ -568,7 +593,7 @@ export default function ProgramManager() {
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
-        className="mx-3 my-4 max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-3xl overflow-y-auto overscroll-contain rounded-2xl p-0 sm:mx-4 sm:my-6 sm:max-h-[calc(100dvh-3rem)] sm:w-full"
+        className="mx-3 my-4 max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-4xl overflow-y-auto overscroll-contain rounded-2xl p-0 sm:mx-4 sm:my-6 sm:max-h-[calc(100dvh-3rem)] sm:w-full"
       >
         <div className="sticky top-0 z-10 border-b border-gray-100 bg-white px-5 py-4 pr-16 dark:border-gray-800 dark:bg-gray-900 sm:px-6 sm:py-5">
           <p className="text-sm font-medium text-brand-500">
@@ -584,6 +609,14 @@ export default function ProgramManager() {
           className="block"
         >
           <div className="space-y-5 px-5 py-5 sm:px-6">
+          <ImageUpload
+            label="Upload Program Image"
+            value={formState.image}
+            onChange={handleImageChange}
+            onUploadingChange={setIsImageUploading}
+            helperText="Use a clear program cover image. PNG, JPG, WebP, or SVG up to 5 MB."
+          />
+
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Title">
               <input
@@ -617,16 +650,6 @@ export default function ProgramManager() {
                 <option>Intermediate</option>
                 <option>Advanced</option>
               </select>
-            </Field>
-
-            <Field label="Image Path">
-              <input
-                name="image"
-                value={formState.image}
-                onChange={handleInputChange}
-                className={inputClassName}
-                placeholder="/images/Programs/GYM1.jpg"
-              />
             </Field>
 
             <Field label="Duration Weeks">
@@ -788,11 +811,11 @@ export default function ProgramManager() {
             </button>
             <button
               type="submit"
-              disabled={isSaving}
+              disabled={isSaving || isImageUploading}
               className="inline-flex items-center justify-center rounded-xl bg-brand-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save className="mr-2 h-4 w-4" />
-              {isSaving ? "Saving..." : actionLabel}
+              {isImageUploading ? "Uploading..." : isSaving ? "Saving..." : actionLabel}
             </button>
           </div>
         </form>
