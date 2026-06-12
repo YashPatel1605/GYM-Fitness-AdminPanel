@@ -10,8 +10,6 @@ import {
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
-  PageIcon,
-  
 } from "../icons/index";
 
 import {
@@ -20,6 +18,7 @@ import {
   HelpCircle,
   UtensilsCrossed,
   CreditCard,
+  HandPlatter,
 } from "lucide-react";
 
 type NavItem = {
@@ -57,8 +56,8 @@ const navItems: NavItem[] = [
   },
   {
     name: "Services",
-    icon: <PageIcon />,
-    path: "/pages",
+    icon: <HandPlatter size={20} />,
+    path: "/services",
   },
   {
     name: "Faq",

@@ -66,7 +66,7 @@ type FormState = {
   fullDescription: string;
   image: string;
   categories: string;
-  benefits: string;
+  benefits: string[];
   exercisesList: Exercise[];
 };
 
@@ -92,7 +92,7 @@ const initialFormState: FormState = {
   fullDescription: "",
   image: "",
   categories: "",
-  benefits: "",
+  benefits: [""],
   exercisesList: [{ ...initialExercise }],
 };
 
@@ -116,6 +116,12 @@ const splitList = (value: string) =>
     .filter(Boolean);
 
 const joinList = (items: string[] = []) => items.join(", ");
+
+const cleanList = (items: string[] = []) =>
+  items.map((item) => item.trim()).filter(Boolean);
+
+const ensureListInputs = (items: string[] = []) =>
+  items.length > 0 ? [...items] : [""];
 
 const toNumber = (value: string, fallback = 0) => {
   const numberValue = Number(value);
@@ -240,6 +246,32 @@ export default function ProgramManager() {
     }));
   };
 
+  const handleBenefitChange = (index: number, value: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      benefits: prev.benefits.map((benefit, currentIndex) =>
+        currentIndex === index ? value : benefit
+      ),
+    }));
+  };
+
+  const addBenefitRow = () => {
+    setFormState((prev) => ({
+      ...prev,
+      benefits: [...prev.benefits, ""],
+    }));
+  };
+
+  const removeBenefitRow = (index: number) => {
+    setFormState((prev) => ({
+      ...prev,
+      benefits:
+        prev.benefits.length === 1
+          ? [""]
+          : prev.benefits.filter((_, currentIndex) => currentIndex !== index),
+    }));
+  };
+
   const addExerciseRow = () => {
     setFormState((prev) => ({
       ...prev,
@@ -293,7 +325,7 @@ export default function ProgramManager() {
         fullDescription: formState.fullDescription.trim(),
         image: formState.image.trim(),
         categories: splitList(formState.categories),
-        benefits: splitList(formState.benefits),
+        benefits: cleanList(formState.benefits),
         exercisesList: exercises,
       };
 
@@ -337,7 +369,7 @@ export default function ProgramManager() {
       fullDescription: program.fullDescription || "",
       image: program.image || "",
       categories: joinList(program.categories),
-      benefits: (program.benefits || []).join("\n"),
+      benefits: ensureListInputs(program.benefits),
       exercisesList:
         program.exercisesList?.length > 0
           ? program.exercisesList.map((exercise) => ({
@@ -722,16 +754,12 @@ export default function ProgramManager() {
             />
           </Field>
 
-          <Field label="Benefits">
-            <textarea
-              name="benefits"
-              rows={4}
-              value={formState.benefits}
-              onChange={handleInputChange}
-              className={textareaClassName}
-              placeholder="One benefit per line"
-            />
-          </Field>
+          <BenefitInputGroup
+            items={formState.benefits}
+            onAdd={addBenefitRow}
+            onChange={handleBenefitChange}
+            onRemove={removeBenefitRow}
+          />
 
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -843,6 +871,57 @@ function Field({
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+function BenefitInputGroup({
+  items,
+  onAdd,
+  onChange,
+  onRemove,
+}: {
+  items: string[];
+  onAdd: () => void;
+  onChange: (index: number, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Benefits
+        </label>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <Plus className="h-4 w-4" />
+          Add Benefit
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((benefit, index) => (
+          <div key={index} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input
+              value={benefit}
+              onChange={(event) => onChange(index, event.target.value)}
+              className={inputClassName}
+              placeholder="Improves strength, energy, and consistency"
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-red-700 transition hover:bg-red-100 dark:border-red-800 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-900"
+              aria-label="Remove benefit"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

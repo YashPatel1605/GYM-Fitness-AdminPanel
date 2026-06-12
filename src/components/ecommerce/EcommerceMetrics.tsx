@@ -80,7 +80,7 @@ const metricsData: {
     id: 4,
     title: "Services",
     countKey: "services",
-    href: "/pages",
+    href: "/services",
     Icon: HandPlatter,
     iconClassName:
       "bg-purple-50 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300",

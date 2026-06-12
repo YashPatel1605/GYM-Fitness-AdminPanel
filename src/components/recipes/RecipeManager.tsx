@@ -60,8 +60,8 @@ type FormState = {
   protein: string;
   description: string;
   imageUrl: string;
-  ingredients: string;
-  instructions: string;
+  ingredients: string[];
+  instructions: string[];
 };
 
 type ToastState = {
@@ -81,8 +81,8 @@ const initialFormState: FormState = {
   protein: "0",
   description: "",
   imageUrl: "",
-  ingredients: "",
-  instructions: "",
+  ingredients: [""],
+  instructions: [""],
 };
 
 const badgeColorByCategoryColor: Record<
@@ -97,13 +97,11 @@ const badgeColorByCategoryColor: Record<
   gray: "light",
 };
 
-const splitLines = (value: string) =>
-  value
-    .split(/\r?\n/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+const cleanList = (items: string[] = []) =>
+  items.map((item) => item.trim()).filter(Boolean);
 
-const joinLines = (items: string[] = []) => items.join("\n");
+const ensureListInputs = (items: string[] = []) =>
+  items.length > 0 ? [...items] : [""];
 
 const toNumber = (value: string, fallback = 0) => {
   const numberValue = Number(value);
@@ -221,6 +219,39 @@ export default function RecipeManager() {
     }));
   };
 
+  const handleListItemChange = (
+    field: "ingredients" | "instructions",
+    index: number,
+    value: string
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: prev[field].map((item, currentIndex) =>
+        currentIndex === index ? value : item
+      ),
+    }));
+  };
+
+  const addListItem = (field: "ingredients" | "instructions") => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: [...prev[field], ""],
+    }));
+  };
+
+  const removeListItem = (
+    field: "ingredients" | "instructions",
+    index: number
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]:
+        prev[field].length === 1
+          ? [""]
+          : prev[field].filter((_, currentIndex) => currentIndex !== index),
+    }));
+  };
+
   const buildPayload = () => ({
     title: formState.title.trim(),
     category: formState.category.trim(),
@@ -230,8 +261,8 @@ export default function RecipeManager() {
     protein: toNumber(formState.protein),
     description: formState.description.trim(),
     imageUrl: formState.imageUrl.trim(),
-    ingredients: splitLines(formState.ingredients),
-    instructions: splitLines(formState.instructions),
+    ingredients: cleanList(formState.ingredients),
+    instructions: cleanList(formState.instructions),
   });
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -302,8 +333,8 @@ export default function RecipeManager() {
       protein: String(recipe.protein ?? ""),
       description: recipe.description || "",
       imageUrl: recipe.imageUrl || "",
-      ingredients: joinLines(recipe.ingredients),
-      instructions: joinLines(recipe.instructions),
+      ingredients: ensureListInputs(recipe.ingredients),
+      instructions: ensureListInputs(recipe.instructions),
     });
     setError(null);
     setIsModalOpen(true);
@@ -424,22 +455,22 @@ export default function RecipeManager() {
 
         <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
-            <table className="min-w-full">
+            <table className="w-full table-fixed">
               <thead className="border-b border-gray-100 bg-gray-50 dark:border-white/[0.05] dark:bg-gray-900">
                 <tr>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="w-[36%] px-3 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Recipe
                   </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="w-[13%] px-3 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Category
                   </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="w-[15%] px-3 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Nutrition
                   </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="w-[15%] px-3 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Details
                   </th>
-                  <th className="px-5 py-3 text-end text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="w-[21%] px-3 py-3 text-end text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Actions
                   </th>
                 </tr>
@@ -466,55 +497,81 @@ export default function RecipeManager() {
                 ) : (
                   sortedRecipes.map((recipe) => (
                     <tr key={recipe._id} className="align-top">
-                      <td className="px-5 py-5">
-                        <div className="flex min-w-[520px] items-start gap-4">
+                      <td className="px-3 py-5">
+                        <div className="flex min-w-0 items-start gap-3">
                           <ImageViewer
                             src={recipe.imageUrl}
                             alt={recipe.title}
-                            className="h-24 w-24"
+                            className="h-18 w-18"
                           />
-                          <div>
-                            <p className="text-base font-semibold text-gray-800 dark:text-white/90">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-semibold text-gray-800 dark:text-white/90">
                               {recipe.title}
                             </p>
-                            <p className="mt-2 max-w-[420px] text-sm leading-6 text-gray-500 dark:text-gray-400">
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
                               {recipe.description}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <Badge
-                          color={
-                            badgeColorByCategoryColor[recipe.categoryColor] ||
-                            "light"
-                          }
-                          variant="light"
-                          size="sm"
-                        >
-                          {recipe.category || "General"}
-                        </Badge>
+                      <td className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="inline-flex max-w-full items-center">
+                          <Badge
+                            color={
+                              badgeColorByCategoryColor[recipe.categoryColor] ||
+                              "light"
+                            }
+                            variant="light"
+                            size="sm"
+                          >
+                            <span className="max-w-[92px] truncate">
+                              {recipe.category || "General"}
+                            </span>
+                          </Badge>
+                        </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-2 text-gray-800 dark:text-white/90">
-                          <Flame className="h-4 w-4 text-error-500" />
-                          {recipe.calories} calories
-                        </span>
-                        <span className="mt-2 block">
-                          {recipe.protein}g protein
-                        </span>
+                      <td className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2 dark:border-gray-800 dark:bg-white/[0.03]">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-error-50 text-error-500 dark:bg-error-500/15">
+                              <Flame className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {recipe.calories}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                calories
+                              </p>
+                            </div>
+                          </div>
+                          <div className="truncate rounded-lg bg-gray-50 px-2.5 py-2 text-xs font-medium text-gray-700 dark:bg-white/[0.03] dark:text-gray-300">
+                            {recipe.protein}g protein
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-2 text-gray-800 dark:text-white/90">
-                          <Clock3 className="h-4 w-4 text-brand-500" />
-                          {recipe.time} min
-                        </span>
-                        <span className="mt-2 block">
-                          {recipe.ingredients?.length || 0} ingredients
-                        </span>
+                      <td className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2 dark:border-gray-800 dark:bg-white/[0.03]">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-300">
+                              <Clock3 className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {recipe.time} min
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                prep time
+                              </p>
+                            </div>
+                          </div>
+                          <div className="truncate rounded-lg bg-gray-50 px-2.5 py-2 text-xs font-medium text-gray-700 dark:bg-white/[0.03] dark:text-gray-300">
+                            {recipe.ingredients?.length || 0} ingredients
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-5 py-4 text-end text-sm text-gray-500 dark:text-gray-400">
-                        <div className="inline-flex items-center gap-2">
+                      <td className="px-3 py-4 text-end text-sm text-gray-500 dark:text-gray-400">
+                        <div className="inline-flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => handleEdit(recipe)}
@@ -670,27 +727,31 @@ export default function RecipeManager() {
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Ingredients">
-                <textarea
-                  name="ingredients"
-                  rows={8}
-                  value={formState.ingredients}
-                  onChange={handleInputChange}
-                  className={textareaClassName}
-                  placeholder="One ingredient per line"
-                />
-              </Field>
+              <ListInputGroup
+                label="Ingredients"
+                addLabel="Add Ingredient"
+                removeLabel="Remove ingredient"
+                items={formState.ingredients}
+                placeholder="200g grilled chicken breast"
+                onAdd={() => addListItem("ingredients")}
+                onChange={(index, value) =>
+                  handleListItemChange("ingredients", index, value)
+                }
+                onRemove={(index) => removeListItem("ingredients", index)}
+              />
 
-              <Field label="Instructions">
-                <textarea
-                  name="instructions"
-                  rows={8}
-                  value={formState.instructions}
-                  onChange={handleInputChange}
-                  className={textareaClassName}
-                  placeholder="One instruction per line"
-                />
-              </Field>
+              <ListInputGroup
+                label="Instructions"
+                addLabel="Add Step"
+                removeLabel="Remove instruction"
+                items={formState.instructions}
+                placeholder="Grill chicken until cooked through"
+                onAdd={() => addListItem("instructions")}
+                onChange={(index, value) =>
+                  handleListItemChange("instructions", index, value)
+                }
+                onRemove={(index) => removeListItem("instructions", index)}
+              />
             </div>
 
             {error && (
@@ -743,6 +804,65 @@ function Field({
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+function ListInputGroup({
+  label,
+  addLabel,
+  removeLabel,
+  items,
+  placeholder,
+  onAdd,
+  onChange,
+  onRemove,
+}: {
+  label: string;
+  addLabel: string;
+  removeLabel: string;
+  items: string[];
+  placeholder: string;
+  onAdd: () => void;
+  onChange: (index: number, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {label}
+        </label>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <Plus className="h-4 w-4" />
+          {addLabel}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((item, index) => (
+          <div key={index} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input
+              value={item}
+              onChange={(event) => onChange(index, event.target.value)}
+              className={inputClassName}
+              placeholder={placeholder}
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-red-700 transition hover:bg-red-100 dark:border-red-800 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-900"
+              aria-label={removeLabel}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
