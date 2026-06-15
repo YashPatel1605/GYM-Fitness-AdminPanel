@@ -15,6 +15,7 @@ import {
 import {
   Dumbbell,
   Users,
+  UserRound,
   HelpCircle,
   UtensilsCrossed,
   CreditCard,
@@ -43,6 +44,11 @@ const navItems: NavItem[] = [
     icon: <Dumbbell size={20} />,
     name: "Programs",
     path: "/programs",
+  },
+  {
+    icon: <UserRound size={20} />,
+    name: "Members",
+    path: "/members",
   },
   {
     name: "Membership-Plan",
