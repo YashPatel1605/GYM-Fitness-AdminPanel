@@ -14,6 +14,14 @@ type Member = {
   avatar?: string;
   googleId?: string;
   authProvider?: string;
+  membership?: {
+    planType?: string;
+    status?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+  };
   createdAt: string;
   updatedAt: string;
   __v?: number;
@@ -42,7 +50,7 @@ const isMember = (value: unknown): value is Member =>
       "email" in value
   );
 
-const formatDate = (value?: string) => {
+const formatShortDate = (value?: string) => {
   if (!value) {
     return "N/A";
   }
@@ -57,10 +65,23 @@ const formatDate = (value?: string) => {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(date);
 };
+
+const formatPlanType = (value?: string) => {
+  if (!value || value === "NONE") {
+    return "No Plan";
+  }
+
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const isActiveMembership = (status?: string) =>
+  status?.toLowerCase() === "active";
 
 export default function MembersManager() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -155,25 +176,22 @@ export default function MembersManager() {
           </button>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="max-w-full overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="border-b border-gray-100 bg-gray-50 dark:border-white/[0.05] dark:bg-gray-900">
+        <div className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-fixed">
+              <thead className="border-b border-gray-100 bg-gray-50/80 dark:border-white/[0.05] dark:bg-gray-900/70">
                 <tr>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="w-[40%] px-4 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-5">
                     Member
                   </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    Provider
+                  <th className="w-[20%] px-4 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-5">
+                    Membership
                   </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    Google ID
+                  <th className="w-[24%] px-4 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-5">
+                    Validity
                   </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    Joined
-                  </th>
-                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    Updated
+                  <th className="w-[16%] px-4 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 xl:px-5">
+                    Last Update
                   </th>
                 </tr>
               </thead>
@@ -181,7 +199,7 @@ export default function MembersManager() {
                 {isLoading ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                     >
                       Loading Members...
@@ -190,62 +208,107 @@ export default function MembersManager() {
                 ) : sortedMembers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                     >
                       No Members found.
                     </td>
                   </tr>
                 ) : (
-                  sortedMembers.map((member) => (
-                    <tr key={member._id} className="align-top">
-                      <td className="px-5 py-5">
-                        <div className="flex min-w-[320px] items-center gap-4">
-                          <ImageViewer
-                            src={member.avatar}
-                            alt={member.name}
-                            className="h-14 w-14"
-                            imageClassName="rounded-full"
-                            fallbackClassName="rounded-full"
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-base font-semibold text-gray-800 dark:text-white/90">
-                              {member.name}
-                            </p>
-                            <a
-                              href={`mailto:${member.email}`}
-                              className="mt-2 inline-flex max-w-[280px] items-center gap-2 truncate text-sm text-gray-500 transition hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-300"
-                            >
-                              <Mail className="h-4 w-4 shrink-0" />
-                              <span className="truncate">{member.email}</span>
-                            </a>
+                  sortedMembers.map((member) => {
+                    const membership = member.membership;
+                    const isActive = isActiveMembership(membership?.status);
+
+                    return (
+                      <tr
+                        key={member._id}
+                        className="align-top transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[0.04]"
+                      >
+                        <td className="px-4 py-5 xl:px-5">
+                          <div className="flex min-w-0 items-center gap-3 xl:gap-4">
+                            <ImageViewer
+                              src={member.avatar}
+                              alt={member.name}
+                              className="h-12 w-12 shrink-0 rounded-full ring-2 ring-white dark:ring-gray-900 xl:h-14 xl:w-14"
+                              imageClassName="rounded-full"
+                              fallbackClassName="rounded-full"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-base font-semibold text-gray-800 dark:text-white/90">
+                                {member.name}
+                              </p>
+                              <a
+                                href={`mailto:${member.email}`}
+                                className="mt-2 inline-flex max-w-full items-center gap-2 truncate text-sm text-gray-500 transition hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-300"
+                              >
+                                <Mail className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{member.email}</span>
+                              </a>
+                              <span className="mt-2 inline-flex max-w-full items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                                <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">
+                                  Joined {formatShortDate(member.createdAt)}
+                                </span>
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <Badge color="success" variant="light" size="sm">
-                          {member.authProvider || "google"}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="block max-w-[190px] truncate font-mono text-xs text-gray-700 dark:text-gray-300">
-                          {member.googleId || "N/A"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="inline-flex min-w-[170px] items-center gap-2">
-                          <CalendarDays className="h-4 w-4 shrink-0 text-gray-400" />
-                          {formatDate(member.createdAt)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="inline-flex min-w-[170px] items-center gap-2">
-                          <ShieldCheck className="h-4 w-4 shrink-0 text-gray-400" />
-                          {formatDate(member.updatedAt)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-4 py-5 text-sm text-gray-500 dark:text-gray-400 xl:px-5">
+                          <div className="flex min-w-0 flex-col items-start gap-2">
+                            <Badge
+                              color={
+                                membership?.planType &&
+                                membership.planType !== "NONE"
+                                  ? "primary"
+                                  : "light"
+                              }
+                              variant="light"
+                              size="sm"
+                            >
+                              {formatPlanType(membership?.planType)}
+                            </Badge>
+                            <Badge
+                              color={isActive ? "success" : "error"}
+                              variant="light"
+                              size="sm"
+                            >
+                              {isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="px-4 py-5 text-sm xl:px-5">
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <span className="inline-flex min-w-0 items-center gap-2 text-gray-600 dark:text-gray-300">
+                              <CalendarDays className="h-4 w-4 shrink-0 text-gray-400" />
+                              <span className="min-w-0 truncate">
+                                Start:{" "}
+                                {formatShortDate(
+                                  membership?.startDate ?? undefined
+                                )}
+                              </span>
+                            </span>
+                            <span className="inline-flex min-w-0 items-center gap-2 font-medium text-error-600 dark:text-error-500">
+                              <CalendarDays className="h-4 w-4 shrink-0 text-error-500" />
+                              <span className="min-w-0 truncate">
+                                End:{" "}
+                                {formatShortDate(
+                                  membership?.endDate ?? undefined
+                                )}
+                              </span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-5 text-sm text-gray-500 dark:text-gray-400 xl:px-5">
+                          <span className="inline-flex min-w-0 items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 shrink-0 text-gray-400" />
+                            <span className="truncate">
+                              {formatShortDate(member.updatedAt)}
+                            </span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

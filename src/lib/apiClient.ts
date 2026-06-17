@@ -1,4 +1,5 @@
 const API_BASE_URL = "https://gym-fitness-backend-lnmr.onrender.com/api";
+// const API_BASE_URL = "http://localhost:5000/api";
 
 type ApiClientOptions = RequestInit & {
   authToken?: string;
