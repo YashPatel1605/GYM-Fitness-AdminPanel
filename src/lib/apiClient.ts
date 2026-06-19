@@ -1,4 +1,5 @@
 const API_BASE_URL = "https://gym-fitness-backend-lnmr.onrender.com/api";
+import { getAuthToken, redirectToSignIn } from "@/lib/auth";
 // const API_BASE_URL = "http://localhost:5000/api";
 
 type ApiClientOptions = RequestInit & {
@@ -6,14 +7,6 @@ type ApiClientOptions = RequestInit & {
 };
 
 type ApiBody = unknown;
-
-const getAuthToken = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return localStorage.getItem("token") || localStorage.getItem("authToken");
-};
 
 const buildUrl = (endpoint: string) => {
   if (/^https?:\/\//i.test(endpoint)) {
@@ -61,6 +54,10 @@ async function fetchApi<T>(
   const contentType = response.headers.get("content-type");
   const isJson = contentType?.includes("application/json");
   const data = isJson ? await response.json() : await response.text();
+
+  if ((response.status === 401 || response.status === 403) && token) {
+    redirectToSignIn();
+  }
 
   if (!response.ok) {
     const message =

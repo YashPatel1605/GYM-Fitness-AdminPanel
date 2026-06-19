@@ -2,8 +2,8 @@ import SignInForm from "@/components/auth/SignInForm";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Next.js SignIn Page | Gym-fitness - Next.js Dashboard Template",
-  description: "This is Next.js Signin Page Gym-fitness Dashboard Template",
+  title: "Admin Sign In | Gym Fitness",
+  description: "Sign in to the Gym Fitness admin panel.",
 };
 
 export default function SignIn() {
