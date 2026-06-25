@@ -26,7 +26,10 @@ type PlanFeature = {
 type MembershipPlan = {
   _id: string;
   name: string;
+  description: string;
   price: number;
+  durationInMonths: number;
+  savingsAmount: number;
   isPopular: boolean;
   features: PlanFeature[];
   createdAt: string;
@@ -36,7 +39,7 @@ type MembershipPlan = {
 type PlanResponse = {
   success?: boolean;
   count?: number;
-  data: MembershipPlan[] | MembershipPlan;
+  data?: MembershipPlan[] | MembershipPlan | null;
   message?: string;
   meta?: {
     total?: number;
@@ -48,7 +51,10 @@ type PlanResponse = {
 
 type FormState = {
   name: string;
+  description: string;
   price: string;
+  durationInMonths: string;
+  savingsAmount: string;
   isPopular: boolean;
   features: PlanFeature[];
 };
@@ -65,7 +71,10 @@ const initialFeature: PlanFeature = {
 
 const initialFormState: FormState = {
   name: "",
+  description: "",
   price: "",
+  durationInMonths: "1",
+  savingsAmount: "0",
   isPopular: false,
   features: [{ ...initialFeature }],
 };
@@ -81,6 +90,19 @@ const formatCurrency = (value: number) =>
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value || 0);
+
+const formatDuration = (months: number) =>
+  `${months || 0} ${months === 1 ? "month" : "months"}`;
+
+const normalizePlans = (
+  data: PlanResponse["data"] | MembershipPlan | MembershipPlan[]
+) => {
+  if (Array.isArray(data)) {
+    return data.filter(Boolean);
+  }
+
+  return data ? [data] : [];
+};
 
 export default function MembershipPlanManager() {
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
@@ -98,7 +120,7 @@ export default function MembershipPlanManager() {
 
     try {
       const result = await apiClient.get<PlanResponse>("/plan");
-      setPlans(Array.isArray(result.data) ? result.data : []);
+      setPlans(normalizePlans(result.data));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to fetch plan data."
@@ -147,14 +169,19 @@ export default function MembershipPlanManager() {
     setIsModalOpen(true);
   };
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const target = event.target;
     const { name, value, type } = target;
     const key = name as keyof FormState;
 
     setFormState((prev) => ({
       ...prev,
-      [key]: type === "checkbox" ? target.checked : value,
+      [key]:
+        target instanceof HTMLInputElement && type === "checkbox"
+          ? target.checked
+          : value,
     }));
   };
 
@@ -209,7 +236,10 @@ export default function MembershipPlanManager() {
       const isEditing = Boolean(selectedPlan);
       const payload = {
         name: formState.name.trim().toUpperCase(),
+        description: formState.description.trim(),
         price: toPrice(formState.price),
+        durationInMonths: toPrice(formState.durationInMonths),
+        savingsAmount: toPrice(formState.savingsAmount),
         isPopular: formState.isPopular,
         features,
       };
@@ -220,7 +250,18 @@ export default function MembershipPlanManager() {
             payload
           )
         : await apiClient.post<PlanResponse>("/plan", payload);
-      const savedPlan = Array.isArray(result.data) ? result.data[0] : result.data;
+      const savedPlan = normalizePlans(result.data)[0];
+
+      if (!savedPlan?._id) {
+        await loadPlans();
+        showToast(
+          "success",
+          result.message ||
+            `Membership plan ${isEditing ? "updated" : "created"} successfully.`
+        );
+        closeModal();
+        return;
+      }
 
       setPlans((current) => {
         if (selectedPlan) {
@@ -254,7 +295,10 @@ export default function MembershipPlanManager() {
     setSelectedPlan(plan);
     setFormState({
       name: plan.name || "",
+      description: plan.description || "",
       price: String(plan.price ?? ""),
+      durationInMonths: String(plan.durationInMonths ?? ""),
+      savingsAmount: String(plan.savingsAmount ?? ""),
       isPopular: Boolean(plan.isPopular),
       features:
         plan.features?.length > 0
@@ -314,6 +358,10 @@ export default function MembershipPlanManager() {
     (total, plan) => total + (plan.features?.length || 0),
     0
   );
+  const totalSavings = plans.reduce(
+    (total, plan) => total + (plan.savingsAmount || 0),
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -360,10 +408,11 @@ export default function MembershipPlanManager() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Total Plans" value={plans.length} />
           <StatCard label="Popular Plans" value={popularPlans} />
           <StatCard label="Plan Features" value={totalFeatures} />
+          <StatCard label="Total Savings" value={formatCurrency(totalSavings)} />
         </div>
       </div>
 
@@ -400,6 +449,9 @@ export default function MembershipPlanManager() {
                     Price
                   </th>
                   <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Duration
+                  </th>
+                  <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Features
                   </th>
                   <th className="px-5 py-3 text-start text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -414,7 +466,7 @@ export default function MembershipPlanManager() {
                 {isLoading ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                     >
                       Loading membership plans...
@@ -423,7 +475,7 @@ export default function MembershipPlanManager() {
                 ) : sortedPlans.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                     >
                       No membership plans found.
@@ -454,6 +506,9 @@ export default function MembershipPlanManager() {
                                 )}
                               </div>
                               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                {plan.description || "No description added."}
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-gray-400 dark:text-gray-500">
                                 {includedCount} of {plan.features?.length || 0}{" "}
                                 features included
                               </p>
@@ -466,6 +521,14 @@ export default function MembershipPlanManager() {
                           </span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             per membership cycle
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                            {formatDuration(plan.durationInMonths)}
+                          </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            Save {formatCurrency(plan.savingsAmount)}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -573,7 +636,44 @@ export default function MembershipPlanManager() {
                   placeholder="3500"
                 />
               </Field>
+
+              <Field label="Duration In Months">
+                <input
+                  required
+                  min="1"
+                  name="durationInMonths"
+                  type="number"
+                  value={formState.durationInMonths}
+                  onChange={handleInputChange}
+                  className={inputClassName}
+                  placeholder="12"
+                />
+              </Field>
+
+              <Field label="Savings Amount">
+                <input
+                  min="0"
+                  name="savingsAmount"
+                  type="number"
+                  value={formState.savingsAmount}
+                  onChange={handleInputChange}
+                  className={inputClassName}
+                  placeholder="6000"
+                />
+              </Field>
             </div>
+
+            <Field label="Description">
+              <textarea
+                required
+                name="description"
+                rows={3}
+                value={formState.description}
+                onChange={handleInputChange}
+                className={textareaClassName}
+                placeholder="Complete fitness transformation package."
+              />
+            </Field>
 
             <label className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300">
               <input
@@ -681,7 +781,10 @@ export default function MembershipPlanManager() {
 const inputClassName =
   "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-gray-800 dark:bg-gray-950 dark:text-white dark:focus:border-brand-400";
 
-function StatCard({ label, value }: { label: string; value: number }) {
+const textareaClassName =
+  "w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-gray-800 dark:bg-gray-950 dark:text-white dark:focus:border-brand-400";
+
+function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 text-right dark:border-gray-800 dark:bg-white/[0.03]">
       <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>

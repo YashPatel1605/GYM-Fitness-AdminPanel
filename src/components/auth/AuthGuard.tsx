@@ -3,32 +3,32 @@
 import { getAuthToken, isTokenValid, redirectToSignIn } from "@/lib/auth";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { usePathname } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
-
-const subscribeToSession = (onStoreChange: () => void) => {
-  window.addEventListener("storage", onStoreChange);
-  const expiryCheck = window.setInterval(onStoreChange, 30_000);
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.clearInterval(expiryCheck);
-  };
-};
-
-const getSessionSnapshot = () => isTokenValid(getAuthToken());
-const getServerSessionSnapshot = () => false;
+import { useEffect, useState } from "react";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuthenticated = useSyncExternalStore(
-    subscribeToSession,
-    getSessionSnapshot,
-    getServerSessionSnapshot
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) redirectToSignIn();
-  }, [isAuthenticated, pathname]);
+    const checkSession = () => {
+      const hasValidSession = isTokenValid(getAuthToken());
+      setIsAuthenticated(hasValidSession);
+
+      if (!hasValidSession) {
+        redirectToSignIn();
+      }
+    };
+
+    checkSession();
+
+    window.addEventListener("storage", checkSession);
+    const expiryCheck = window.setInterval(checkSession, 30_000);
+
+    return () => {
+      window.removeEventListener("storage", checkSession);
+      window.clearInterval(expiryCheck);
+    };
+  }, [pathname]);
 
   if (!isAuthenticated) {
     return <LoadingScreen message="Checking your secure session..." />;

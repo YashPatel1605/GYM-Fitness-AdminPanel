@@ -44,7 +44,11 @@ export const isTokenValid = (token: string | null) => {
   if (!token) return false;
 
   const payload = decodeJwtPayload(token);
-  return Boolean(payload?.exp && payload.exp * 1000 > Date.now());
+  if (!payload?.exp) {
+    return true;
+  }
+
+  return payload.exp * 1000 > Date.now();
 };
 
 export const saveSession = (token: string, admin: AdminUser) => {
