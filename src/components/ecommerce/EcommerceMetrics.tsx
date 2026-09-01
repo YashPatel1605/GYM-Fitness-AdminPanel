@@ -10,6 +10,7 @@ import {
   CreditCard,
   Dumbbell,
   HandPlatter,
+  Star,
   UsersRound,
 } from "lucide-react";
 
@@ -19,7 +20,8 @@ type CountKey =
   | "recipes"
   | "services"
   | "faqs"
-  | "trainers";
+  | "trainers"
+  | "ratings";
 
 type CountsData = Record<CountKey, number> & {
   total?: number;
@@ -34,6 +36,7 @@ type CountsResponse = {
   services?: number;
   faqs?: number;
   trainers?: number;
+  ratings?: number;
   total?: number;
   message?: string;
 };
@@ -104,6 +107,16 @@ const metricsData: {
     iconClassName:
       "bg-cyan-50 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-300",
     cardClassName: "hover:border-cyan-200 dark:hover:border-cyan-500/40",
+  },
+  {
+    id: 7,
+    title: "Total User Rating",
+    countKey: "ratings",
+    href: "/ratings",
+    Icon: Star,
+    iconClassName:
+      "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/15 dark:text-yellow-300",
+    cardClassName: "hover:border-yellow-200 dark:hover:border-yellow-500/40",
   },
 ];
 

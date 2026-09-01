@@ -20,6 +20,7 @@ import {
   UtensilsCrossed,
   CreditCard,
   HandPlatter,
+  Star,
 } from "lucide-react";
 
 type NavItem = {
@@ -69,6 +70,11 @@ const navItems: NavItem[] = [
     name: "Faq",
     icon: <HelpCircle size={20} />,
     path: "/faq",
+  },
+  {
+    name: "Ratings",
+    icon: <Star size={20} />,
+    path: "/ratings",
   },
   {
     name: "Trainers",
